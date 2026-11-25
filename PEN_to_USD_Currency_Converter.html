@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sol ↔ Dollar Converter | Tipo de Cambio PEN / USD</title>
+  <!-- Load Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono for crisp tabular numbers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            peru: {
+              red: '#D91023',
+              darkRed: '#B30D1D',
+              lightRed: '#FFF1F2',
+            },
+            usd: {
+              green: '#059669',
+              lightGreen: '#ECFDF5',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans antialiased min-h-screen flex flex-col justify-between selection:bg-peru-red/15 selection:text-peru-red">
+
+  <!-- Top Peruvian Flag-inspired Accent Bar -->
+  <div class="w-full h-1.5 flex">
+    <div class="w-1/3 bg-peru-red"></div>
+    <div class="w-1/3 bg-white"></div>
+    <div class="w-1/3 bg-peru-red"></div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="flex-grow flex items-center justify-center px-4 py-8 sm:py-12">
+    <div class="w-full max-w-md space-y-5">
+
+      <!-- App Header -->
+      <header class="text-center space-y-1.5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200/80 shadow-xs text-xs font-medium text-slate-600">
+          <span id="status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="status-text">Fetching daily rate...</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+          Sol <span class="text-peru-red">↔</span> Dollar
+        </h1>
+        <p class="text-sm text-slate-500">
+          Fast daily exchange rate converter (PEN / USD)
+        </p>
+      </header>
+
+      <!-- Main Converter Card -->
+      <section class="bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/70 p-5 sm:p-6 space-y-5">
+
+        <!-- Quick Amount Presets -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs font-medium text-slate-500">
+            <span>Quick Amounts (<span id="preset-currency-label">PEN</span>)</span>
+            <button id="clear-btn" type="button" class="text-slate-400 hover:text-slate-700 transition-colors">
+              Clear
+            </button>
+          </div>
+          <div id="presets-container" class="grid grid-cols-5 gap-1.5 sm:gap-2">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- Conversion Inputs Stack -->
+        <div class="relative space-y-3">
+
+          <!-- FROM Currency Box -->
+          <div class="rounded-2xl bg-slate-50 border border-slate-200/90 focus-within:border-slate-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-slate-900/5 transition-all p-4">
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2.5">
+                <span id="from-flag" class="text-xl leading-none select-none" aria-hidden="true">🇵🇪</span>
+                <div>
+                  <span id="from-code" class="font-bold text-sm text-slate-900 block leading-none">PEN</span>
+                  <span id="from-name" class="text-xs text-slate-500">Peruvian Sol</span>
+                </div>
+              </div>
+              <span class="text-xs font-medium uppercase tracking-wider text-slate-400">From</span>
+            </div>
+
+            <div class="flex items-baseline gap-2 mt-2">
+              <span id="from-symbol" class="text-2xl font-semibold text-slate-400 select-none">S/</span>
+              <input
+                id="from-amount"
+                type="number"
+                inputmode="decimal"
+                step="any"
+                min="0"
+                value="100"
+                placeholder="0.00"
+                aria-label="Amount to convert"
+                class="w-full bg-transparent text-3xl sm:text-4xl font-mono font-semibold text-slate-900 placeholder-slate-300 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <!-- Floating Swap Button -->
+          <div class="relative h-2 flex items-center justify-center z-10">
+            <button
+              id="swap-btn"
+              type="button"
+              title="Swap currencies"
+              aria-label="Swap PEN and USD"
+              class="group w-11 h-11 rounded-full bg-white border border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300 active:scale-95 transition-all flex items-center justify-center text-slate-700 hover:text-peru-red"
+            >
+              <svg id="swap-icon" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- TO Currency Box (Result) -->
+          <div class="rounded-2xl bg-slate-50/80 border border-slate-200/90 p-4">
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2.5">
+                <span id="to-flag" class="text-xl leading-none select-none" aria-hidden="true">🇺🇸</span>
+                <div>
+                  <span id="to-code" class="font-bold text-sm text-slate-900 block leading-none">USD</span>
+                  <span id="to-name" class="text-xs text-slate-500">US Dollar</span>
+                </div>
+              </div>
+
+              <!-- Copy Result Button -->
+              <button
+                id="copy-btn"
+                type="button"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 active:scale-95 transition-all shadow-2xs"
+                title="Copy converted amount"
+              >
+                <svg id="copy-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span id="copy-label">Copy</span>
+              </button>
+            </div>
+
+            <div class="flex items-baseline gap-2 mt-2 overflow-x-auto">
+              <span id="to-symbol" class="text-2xl font-semibold text-slate-400 select-none">$</span>
+              <div
+                id="to-amount-display"
+                class="w-full text-3xl sm:text-4xl font-mono font-semibold text-emerald-700 truncate select-all"
+              >
+                26.67
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Daily Rate & Casa de Cambio Override Card -->
+        <div class="rounded-2xl bg-slate-50 border border-slate-200/80 p-4 space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Exchange Rate</span>
+                <span id="custom-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                  Custom Rate
+                </span>
+              </div>
+              <p id="rate-primary-text" class="text-sm font-mono font-semibold text-slate-800">
+                1 USD = 3.7500 PEN
+              </p>
+              <p id="rate-inverse-text" class="text-xs font-mono text-slate-500">
+                1 PEN = 0.2667 USD
+              </p>
+            </div>
+
+            <button
+              id="toggle-edit-rate-btn"
+              type="button"
+              class="px-3 py-1.5 rounded-xl text-xs font-medium bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0"
+            >
+              Edit Rate
+            </button>
+          </div>
+
+          <!-- Collapsible Custom Rate Editor (for Casa de Cambio / Street Rate) -->
+          <div id="rate-editor-panel" class="hidden pt-3 border-t border-slate-200/80 space-y-2.5">
+            <label for="custom-rate-input" class="block text-xs text-slate-600">
+              Custom rate (<span class="font-semibold">1 USD in PEN</span>) — useful for local <em>casas de cambio</em>:
+            </label>
+            <div class="flex items-center gap-2">
+              <div class="relative flex-grow">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">S/</span>
+                <input
+                  id="custom-rate-input"
+                  type="number"
+                  inputmode="decimal"
+                  step="0.0001"
+                  min="0.0001"
+                  placeholder="3.7500"
+                  class="w-full pl-8 pr-3 py-2 rounded-xl bg-white border border-slate-300 text-sm font-mono font-semibold text-slate-900 focus:outline-none focus:border-peru-red focus:ring-2 focus:ring-peru-red/15"
+                />
+              </div>
+              <button
+                id="reset-rate-btn"
+                type="button"
+                class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-200/80 hover:bg-slate-300/80 text-slate-700 transition-colors whitespace-nowrap"
+              >
+                Reset to Daily Rate
+              </button>
+            </div>
+          </div>
+
+          <!-- Timestamp & Refresh Row -->
+          <div class="pt-2 border-t border-slate-200/70 flex items-center justify-between text-[11px] text-slate-500">
+            <span id="last-updated-text">Updated: --</span>
+            <button
+              id="refresh-rate-btn"
+              type="button"
+              class="inline-flex items-center gap-1 font-medium text-slate-600 hover:text-peru-red transition-colors"
+              title="Fetch latest daily rate"
+            >
+              <svg id="refresh-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Subtle Toast Notification for Feedback -->
+      <div
+        id="toast"
+        role="status"
+        aria-live="polite"
+        class="fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-full bg-slate-900 text-white text-xs font-medium shadow-lg opacity-0 pointer-events-none transition-all duration-200 flex items-center gap-2 z-50"
+      >
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="toast-message">Copied to clipboard</span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Minimal Footer -->
+  <footer class="py-4 px-4 text-center text-xs text-slate-400">
+    Mid-market reference rates via Open Exchange Rates API • Fallback rate: 1 USD = 3.75 PEN
+  </footer>
+
+  <!-- Hidden textarea for safe clipboard fallback -->
+  <textarea id="clipboard-helper" class="sr-only" aria-hidden="true"></textarea>
+
+  <script>
+    /**
+     * Application State & Configuration
+     */
+    const DEFAULT_FALLBACK_RATE = 3.75; // 1 USD = 3.75 PEN
+    const API_ENDPOINTS = [
+      'https://open.er-api.com/v6/latest/USD',
+      'https://api.frankfurter.app/latest?from=USD&to=PEN'
+    ];
+
+    const state = {
+      direction: 'PEN_TO_USD', // 'PEN_TO_USD' or 'USD_TO_PEN'
+      dailyUsdToPen: DEFAULT_FALLBACK_RATE,
+      activeUsdToPen: DEFAULT_FALLBACK_RATE,
+      isCustomRate: false,
+      rateSource: 'Fallback Reference',
+      lastUpdated: null,
+      swapRotation: 0
+    };
+
+    const CURRENCY_META = {
+      PEN: {
+        code: 'PEN',
+        name: 'Peruvian Sol',
+        symbol: 'S/',
+        flag: '🇵🇪',
+        presets: [10, 50, 100, 500, 1000]
+      },
+      USD: {
+        code: 'USD',
+        name: 'US Dollar',
+        symbol: '$',
+        flag: '🇺🇸',
+        presets: [5, 20, 50, 100, 500]
+      }
+    };
+
+    // DOM Elements
+    const els = {
+      statusDot: document.getElementById('status-dot'),
+      statusText: document.getElementById('status-text'),
+      presetCurrencyLabel: document.getElementById('preset-currency-label'),
+      presetsContainer: document.getElementById('presets-container'),
+      clearBtn: document.getElementById('clear-btn'),
+      fromFlag: document.getElementById('from-flag'),
+      fromCode: document.getElementById('from-code'),
+      fromName: document.getElementById('from-name'),
+      fromSymbol: document.getElementById('from-symbol'),
+      fromAmount: document.getElementById('from-amount'),
+      swapBtn: document.getElementById('swap-btn'),
+      swapIcon: document.getElementById('swap-icon'),
+      toFlag: document.getElementById('to-flag'),
+      toCode: document.getElementById('to-code'),
+      toName: document.getElementById('to-name'),
+      toSymbol: document.getElementById('to-symbol'),
+      toAmountDisplay: document.getElementById('to-amount-display'),
+      copyBtn: document.getElementById('copy-btn'),
+      copyLabel: document.getElementById('copy-label'),
+      customBadge: document.getElementById('custom-badge'),
+      ratePrimaryText: document.getElementById('rate-primary-text'),
+      rateInverseText: document.getElementById('rate-inverse-text'),
+      toggleEditRateBtn: document.getElementById('toggle-edit-rate-btn'),
+      rateEditorPanel: document.getElementById('rate-editor-panel'),
+      customRateInput: document.getElementById('custom-rate-input'),
+      resetRateBtn: document.getElementById('reset-rate-btn'),
+      lastUpdatedText: document.getElementById('last-updated-text'),
+      refreshRateBtn: document.getElementById('refresh-rate-btn'),
+      refreshIcon: document.getElementById('refresh-icon'),
+      toast: document.getElementById('toast'),
+      toastMessage: document.getElementById('toast-message'),
+      clipboardHelper: document.getElementById('clipboard-helper')
+    };
+
+    /**
+     * Format numbers cleanly with thousand separators and fixed decimals
+     */
+    function formatCurrencyNumber(value, decimals = 2) {
+      if (!isFinite(value) || isNaN(value)) return '0.00';
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(value);
+    }
+
+    /**
+     * Show brief non-blocking toast notification
+     */
+    let toastTimeout = null;
+    function showToast(message) {
+      els.toastMessage.textContent = message;
+      els.toast.classList.remove('opacity-0', 'translate-y-2');
+      els.toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        els.toast.classList.remove('opacity-100', 'translate-y-0');
+        els.toast.classList.add('opacity-0', 'translate-y-2');
+      }, 2200);
+    }
+
+    /**
+     * Fetch live exchange rate with automatic fallback
+     */
+    async function fetchDailyExchangeRate(manualRefresh = false) {
+      els.statusDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+      els.statusText.textContent = 'Updating daily rate...';
+      if (manualRefresh) {
+        els.refreshIcon.classList.add('animate-spin');
+      }
+
+      let fetchedRate = null;
+      let sourceLabel = '';
+      let timestampStr = '';
+
+      // Primary API: Open Exchange Rates (open.er-api.com)
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(API_ENDPOINTS[0], { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.rates && typeof data.rates.PEN === 'number') {
+            fetchedRate = data.rates.PEN;
+            sourceLabel = 'Live Daily Rate';
+            timestampStr = data.time_last_update_unix
+              ? new Date(data.time_last_update_unix * 1000).toLocaleString([], {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+        }
+      } catch (err) {
+        // Silently proceed to backup API
+      }
+
+      // Backup API: Frankfurter
+      if (!fetchedRate) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const response = await fetch(API_ENDPOINTS[1], { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.rates && typeof data.rates.PEN === 'number') {
+              fetchedRate = data.rates.PEN;
+              sourceLabel = 'ECB Reference Rate';
+              timestampStr = data.date || new Date().toLocaleDateString();
+            }
+          }
+        } catch (err) {
+          // Proceed to fallback rate
+        }
+      }
+
+      if (fetchedRate && fetchedRate > 0) {
+        state.dailyUsdToPen = fetchedRate;
+        state.rateSource = sourceLabel;
+        state.lastUpdated = timestampStr;
+
+        els.statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        els.statusText.textContent = `${sourceLabel} Active`;
+        if (manualRefresh) showToast('Daily rate updated');
+      } else {
+        // Offline / API failure fallback
+        state.dailyUsdToPen = DEFAULT_FALLBACK_RATE;
+        state.rateSource = 'Offline Fallback';
+        state.lastUpdated = 'Default Reference';
+
+        els.statusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
+        els.statusText.textContent = 'Using Fallback Rate (Offline)';
+        if (manualRefresh) showToast('Offline: Using 3.75 fallback rate');
+      }
+
+      if (!state.isCustomRate) {
+        state.activeUsdToPen = state.dailyUsdToPen;
+        els.customRateInput.value = state.dailyUsdToPen.toFixed(4);
+      }
+
+      els.refreshIcon.classList.remove('animate-spin');
+      updateRateDisplay();
+      recalculate();
+    }
+
+    /**
+     * Render preset amount pills based on active 'From' currency
+     */
+    function renderPresets() {
+      const fromCurrency = state.direction === 'PEN_TO_USD' ? CURRENCY_META.PEN : CURRENCY_META.USD;
+      els.presetCurrencyLabel.textContent = fromCurrency.code;
+      els.presetsContainer.innerHTML = '';
+
+      fromCurrency.presets.forEach((amount) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className =
+          'py-2 px-1 rounded-xl text-xs font-mono font-semibold bg-slate-100 hover:bg-peru-red hover:text-white text-slate-700 border border-slate-200/70 hover:border-peru-red transition-all active:scale-95';
+        btn.textContent = `${fromCurrency.symbol}${amount.toLocaleString('en-US')}`;
+        btn.addEventListener('click', () => {
+          els.fromAmount.value = amount;
+          recalculate();
+        });
+        els.presetsContainer.appendChild(btn);
+      });
+    }
+
+    /**
+     * Update currency headers, symbols, and styling for current direction
+     */
+    function updateDirectionUI() {
+      const isPenToUsd = state.direction === 'PEN_TO_USD';
+      const from = isPenToUsd ? CURRENCY_META.PEN : CURRENCY_META.USD;
+      const to = isPenToUsd ? CURRENCY_META.USD : CURRENCY_META.PEN;
+
+      els.fromFlag.textContent = from.flag;
+      els.fromCode.textContent = from.code;
+      els.fromName.textContent = from.name;
+      els.fromSymbol.textContent = from.symbol;
+
+      els.toFlag.textContent = to.flag;
+      els.toCode.textContent = to.code;
+      els.toName.textContent = to.name;
+      els.toSymbol.textContent = to.symbol;
+
+      // Subtle color cue on result text (Emerald for USD, Peru Red for PEN)
+      if (isPenToUsd) {
+        els.toAmountDisplay.classList.remove('text-peru-red');
+        els.toAmountDisplay.classList.add('text-emerald-700');
+      } else {
+        els.toAmountDisplay.classList.remove('text-emerald-700');
+        els.toAmountDisplay.classList.add('text-peru-red');
+      }
+
+      renderPresets();
+    }
+
+    /**
+     * Update the exchange rate readout and timestamps
+     */
+    function updateRateDisplay() {
+      const usdToPen = state.activeUsdToPen;
+      const penToUsd = usdToPen > 0 ? 1 / usdToPen : 0;
+
+      els.ratePrimaryText.textContent = `1 USD = ${usdToPen.toFixed(4)} PEN`;
+      els.rateInverseText.textContent = `1 PEN = ${penToUsd.toFixed(4)} USD`;
+
+      if (state.isCustomRate) {
+        els.customBadge.classList.remove('hidden');
+        els.lastUpdatedText.textContent = `Custom override (Daily: ${state.dailyUsdToPen.toFixed(4)})`;
+      } else {
+        els.customBadge.classList.add('hidden');
+        els.lastUpdatedText.textContent = `Updated: ${state.lastUpdated || 'Just now'}`;
+      }
+    }
+
+    /**
+     * Perform currency conversion calculation
+     */
+    function recalculate() {
+      const rawValue = parseFloat(els.fromAmount.value);
+      const amount = isNaN(rawValue) || rawValue < 0 ? 0 : rawValue;
+      const rate = state.activeUsdToPen;
+
+      let result = 0;
+      if (state.direction === 'PEN_TO_USD') {
+        result = rate > 0 ? amount / rate : 0;
+      } else {
+        result = amount * rate;
+      }
+
+      els.toAmountDisplay.textContent = formatCurrencyNumber(result, 2);
+    }
+
+    /**
+     * Copy converted amount to clipboard using reliable fallback method
+     */
+    function copyConvertedResult() {
+      const toCurrency = state.direction === 'PEN_TO_USD' ? CURRENCY_META.USD : CURRENCY_META.PEN;
+      const numericText = els.toAmountDisplay.textContent.trim();
+      const fullFormattedText = `${toCurrency.symbol} ${numericText} ${toCurrency.code}`;
+
+      try {
+        els.clipboardHelper.value = numericText.replace(/,/g, '');
+        els.clipboardHelper.classList.remove('sr-only');
+        els.clipboardHelper.select();
+        els.clipboardHelper.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        els.clipboardHelper.classList.add('sr-only');
+
+        els.copyLabel.textContent = 'Copied!';
+        showToast(`Copied ${fullFormattedText}`);
+        setTimeout(() => {
+          els.copyLabel.textContent = 'Copy';
+        }, 1600);
+      } catch (err) {
+        showToast('Unable to copy result');
+      }
+    }
+
+    /**
+     * Event Listeners
+     */
+    els.fromAmount.addEventListener('input', recalculate);
+
+    els.clearBtn.addEventListener('click', () => {
+      els.fromAmount.value = '';
+      els.fromAmount.focus();
+      recalculate();
+    });
+
+    els.swapBtn.addEventListener('click', () => {
+      state.direction = state.direction === 'PEN_TO_USD' ? 'USD_TO_PEN' : 'PEN_TO_USD';
+      state.swapRotation += 180;
+      els.swapIcon.style.transform = `rotate(${state.swapRotation}deg)`;
+
+      // Carry the converted value over if user wants seamless chaining, or keep current input
+      const currentDisplayedResult = parseFloat(els.toAmountDisplay.textContent.replace(/,/g, ''));
+      if (!isNaN(currentDisplayedResult) && currentDisplayedResult > 0) {
+        els.fromAmount.value = currentDisplayedResult.toFixed(2);
+      }
+
+      updateDirectionUI();
+      recalculate();
+    });
+
+    els.copyBtn.addEventListener('click', copyConvertedResult);
+
+    els.toggleEditRateBtn.addEventListener('click', () => {
+      const isHidden = els.rateEditorPanel.classList.contains('hidden');
+      if (isHidden) {
+        els.rateEditorPanel.classList.remove('hidden');
+        els.toggleEditRateBtn.textContent = 'Done';
+        els.customRateInput.value = state.activeUsdToPen.toFixed(4);
+        els.customRateInput.focus();
+        els.customRateInput.select();
+      } else {
+        els.rateEditorPanel.classList.add('hidden');
+        els.toggleEditRateBtn.textContent = 'Edit Rate';
+      }
+    });
+
+    els.customRateInput.addEventListener('input', () => {
+      const customVal = parseFloat(els.customRateInput.value);
+      if (!isNaN(customVal) && customVal > 0) {
+        state.activeUsdToPen = customVal;
+        state.isCustomRate = Math.abs(customVal - state.dailyUsdToPen) > 0.00001;
+        updateRateDisplay();
+        recalculate();
+      }
+    });
+
+    els.resetRateBtn.addEventListener('click', () => {
+      state.isCustomRate = false;
+      state.activeUsdToPen = state.dailyUsdToPen;
+      els.customRateInput.value = state.dailyUsdToPen.toFixed(4);
+      updateRateDisplay();
+      recalculate();
+      showToast('Reset to daily exchange rate');
+    });
+
+    els.refreshRateBtn.addEventListener('click', () => {
+      fetchDailyExchangeRate(true);
+    });
+
+    // Initialize Application
+    window.addEventListener('DOMContentLoaded', () => {
+      updateDirectionUI();
+      updateRateDisplay();
+      recalculate();
+      fetchDailyExchangeRate(false);
+    });
+  </script>
+</body>
+</html>
